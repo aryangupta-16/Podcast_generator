@@ -1,0 +1,34 @@
+# Node.js dependencies
+node_modules/
+
+# Output of 'next build'
+.next/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env files
+.env*
+!.env.example
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# VSCode settings
+.vscode/
+
+# Optional: Editor/IDE folders
+.idea/
+*.swp
+
+# Optional: Mac-specific files
+.AppleDouble
+.LSOverride
+
+# Build cache
+.cache/
