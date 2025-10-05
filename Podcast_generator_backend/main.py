@@ -10,9 +10,11 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from api.podcast import router as podcast_router
+from api.order import router as order_router
 from utils.audio_utils import audio_utils
 from memory.memory_store import memory_store
-
+from db import init_db
+from api import auth
 # Load environment variables
 load_dotenv()
 
@@ -54,9 +56,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+init_db()
+
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 # Include routers
 app.include_router(podcast_router)
+app.include_router(order_router)
 
 
 @app.get("/")

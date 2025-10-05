@@ -13,9 +13,9 @@ from utils.audio_utils import audio_utils
 from models.request_models import PodcastRequest, PodcastResponse, MemoryEntry, Tone, Voice
 
 
-class WorkflowState(TypedDict):
+class WorkflowState(TypedDict,total=False):
     """State for the podcast generation workflow."""
-    request: PodcastRequest
+    request: Annotated[PodcastRequest, "request"]
     script: str
     audio_data: bytes
     audio_file_path: str
@@ -99,6 +99,8 @@ class PodcastWorkflow:
             state["timestamp"] = time.time()
             state["success"] = True
             state["error_message"] = ""
+            print("Returning state keys from generate_script: user preference", state.keys())
+
             return state
         except Exception as e:
             state["success"] = False
@@ -127,6 +129,8 @@ class PodcastWorkflow:
             state["script"] = script
             state["success"] = True
             state["error_message"] = ""
+            print("Returning state keys from generate_script: generate script", state.keys())
+
             return state
             
         except Exception as e:
@@ -137,6 +141,7 @@ class PodcastWorkflow:
     def _generate_audio(self, state: WorkflowState) -> WorkflowState:
         """Generate audio from the script."""
         try:
+            print("Returning state keys from generate_script: generate audio", state.keys())
             request = state["request"]
             script = state["script"]
             
@@ -151,10 +156,13 @@ class PodcastWorkflow:
             except Exception as e:
                 state["success"] = False
                 state["error_message"] = f"Failed to generate audio: {str(e)}"
+                print("Returning state keys from generate_audio error: ", state.keys())
                 return state
             state["audio_data"] = audio_data
             state["success"] = True
             state["error_message"] = ""
+            print("Returning state keys from generate_script:", state.keys())
+
             return state
             
         except Exception as e:
@@ -188,6 +196,8 @@ class PodcastWorkflow:
             state["duration_seconds"] = duration_seconds
             state["success"] = True
             state["error_message"] = ""
+            print("Returning state keys from generate_script:", state.keys())
+
             return state
             
         except Exception as e:
@@ -215,7 +225,8 @@ class PodcastWorkflow:
             
             # Add to memory
             memory_store.add_entry(memory_entry)
-            
+            print("Returning state keys from generate_script:", state.keys())
+
             return state
             
         except Exception as e:
@@ -242,7 +253,8 @@ class PodcastWorkflow:
             memory_store.add_entry(memory_entry)
         except:
             pass  # Ignore memory errors in error handling
-        
+        print("Returning state keys from generate_script:", state.keys())
+
         return state
     
     def _should_continue(self, state: WorkflowState) -> str:

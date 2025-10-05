@@ -19,34 +19,52 @@ const TONE_DESCRIPTIONS: Record<string, string> = {
 
 export default function ToneSelector({ tones, value, onChange }: Props) {
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor="tone" className="font-medium text-gray-700">Tone</label>
+    <div className="flex flex-col gap-4">
+      <label htmlFor="tone" className="font-semibold text-white text-lg">🎭 Tone Selection</label>
+      
       <select
         id="tone"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-indigo-400 focus:outline-none cursor-pointer"
+        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-secondary-400 focus:outline-none cursor-pointer transition-all duration-300"
       >
         {tones.map(t => (
-          <option key={t.value} value={t.value}>{t.label}</option>
+          <option key={t.value} value={t.value} className="bg-gray-800 text-white">{t.label}</option>
         ))}
       </select>
-      <div className="mt-2 flex flex-wrap gap-2">
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {tones.map(t => (
           <div
             key={t.value}
-            className={`relative group flex-1 min-w-[110px] p-3 rounded-xl border ${value === t.value ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'} shadow-soft cursor-pointer transition hover:border-indigo-400`}
+            className={`relative group p-4 rounded-2xl border transition-all duration-300 cursor-pointer hover-lift ${
+              value === t.value 
+                ? 'border-secondary-400 bg-gradient-to-br from-secondary-500/20 to-accent-500/20 shadow-glowPurple' 
+                : 'border-white/20 bg-white/5 hover:border-secondary-300/50'
+            }`}
             onClick={() => onChange(t.value)}
             tabIndex={0}
             aria-label={t.label}
           >
-            <span className="font-semibold text-indigo-700">{t.label}</span>
-            <span className="ml-1 text-xs text-gray-400">{value === t.value ? '✓' : ''}</span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-semibold text-white text-sm">{t.label}</span>
+              {value === t.value && (
+                <div className="w-5 h-5 bg-secondary-400 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="text-xs text-gray-300 line-clamp-2">
+              {TONE_DESCRIPTIONS[t.value] || 'Professional tone quality'}
+            </div>
+            
+            {/* Tooltip on hover */}
             <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 group-hover:flex hidden flex-col items-center z-20">
-              <div className="w-max bg-gray-900 text-white text-xs rounded px-3 py-2 shadow-lg mt-2 opacity-90">
+              <div className="w-max bg-gray-900/95 backdrop-blur-sm text-white text-xs rounded-lg px-3 py-2 shadow-2xl mt-2 opacity-95">
                 {TONE_DESCRIPTIONS[t.value]}
               </div>
-              <div className="w-3 h-3 bg-gray-900 rotate-45 -mt-1" />
+              <div className="w-2 h-2 bg-gray-900/95 rotate-45 -mt-1" />
             </div>
           </div>
         ))}

@@ -1,21 +1,24 @@
+"use client"
 import "../styles/globals.css";
 import type { ReactNode } from "react";
+import Navbar from "./components/Navbar";
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900 min-h-screen font-inter">
-        <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur shadow-soft border-b border-gray-100">
-          <div className="max-w-3xl mx-auto flex items-center gap-4 py-6 px-4 sm:px-8">
-            <img src="/logo.svg" alt="AI Podcast Generator logo" className="w-10 h-10 rounded-2xl shadow-soft" />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">AI Podcast Generator</h1>
-              <p className="text-gray-500 text-sm sm:text-base font-normal -mt-1">Turn any topic into a podcast with AI.</p>
-            </div>
-          </div>
-        </header>
-        <main className="flex flex-col items-center justify-center min-h-[70vh] px-4">
-          {children}
+      <body className="text-gray-900 min-h-screen font-inter relative">
+        {/* Animated background elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary-400/20 to-secondary-400/20 rounded-full blur-3xl animate-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-accent-400/20 to-primary-400/20 rounded-full blur-3xl animate-float animate-delay-200"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-secondary-400/10 to-primary-400/10 rounded-full blur-3xl animate-pulse-glow"></div>
+        </div>
+        
+        <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+          <PayPalScriptProvider options={{ clientId: "ASTr9NGLxso4SaQtugKYf3oqa-uM9Pni-C9wZX_zPsRnny_N1pfZthh5v37fmvkwHkELyc3l5qXXolJf", currency: "USD" }}>
+            {children}
+          </PayPalScriptProvider>
         </main>
       </body>
     </html>

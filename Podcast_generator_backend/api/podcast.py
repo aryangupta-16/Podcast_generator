@@ -5,19 +5,23 @@ FastAPI endpoints for podcast generation.
 import os
 from pathlib import Path
 from typing import List
-from fastapi import APIRouter, HTTPException, Response, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Response, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 from models.request_models import PodcastRequest, PodcastResponse, Tone, Voice
 from workflows.podcast_workflow import podcast_workflow
 from memory.memory_store import memory_store
 from utils.audio_utils import audio_utils
 from agents.tts_agent import TTSAgent
+from models.user_model import User
+from models.podcast_model import Podcast
+from models.transaction_model import Transation
+from utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["podcast"])
 
 
 @router.post("/generate-podcast", response_model=PodcastResponse)
-async def generate_podcast(request: PodcastRequest, background_tasks: BackgroundTasks):
+async def generate_podcast(request: PodcastRequest, background_tasks: BackgroundTasks, current_user = Depends(get_current_user)):
     """
     Generate a podcast episode from a topic.
     
@@ -29,6 +33,12 @@ async def generate_podcast(request: PodcastRequest, background_tasks: Background
         Podcast generation response
     """
     try:
+
+        user_id = current_user.id
+        email = current_user.email
+
+        print(user_id)
+        print(email)
         # Validate OpenAI API key
         if not os.getenv("OPENAI_API_KEY"):
             raise HTTPException(
@@ -72,8 +82,6 @@ async def download_audio(filename: str):
 
         file_path = audio_utils.get_file_path(filename)
         
-        print("file_path")
-        print(file_path)
         if not audio_utils.validate_audio_file(file_path):
             raise HTTPException(
                 status_code=404,
