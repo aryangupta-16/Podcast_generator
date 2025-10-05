@@ -27,7 +27,8 @@ const DUMMY_TONES = [
   { value: "professional", label: "Professional" },
 ];
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "https://podcast-generator-qzhs.onrender.com";
+// const BACKEND_URL = "http://localhost:10000";
 
 export default function PodcastForm() {
   const [topic, setTopic] = useState("");
@@ -236,7 +237,7 @@ export default function PodcastForm() {
                       label: "paypal"
                     }}
                     createOrder={(_, actions) => {
-                      return fetch("http://localhost:8000/api/v1/orders", {
+                      return fetch("https://podcast-generator-qzhs.onrender.com/api/v1/orders", {
                         method: "POST",
                         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                         body: JSON.stringify({ amount: `${credits}.00`, currency: "USD" }),
@@ -245,7 +246,7 @@ export default function PodcastForm() {
                         .then((order) => order.id);
                     }}
                     onApprove={(data, actions) => {
-                      return fetch(`http://localhost:8000/api/v1/orders/${data.orderID}/capture`, {
+                      return fetch(`https://podcast-generator-qzhs.onrender.com/api/v1/orders/${data.orderID}/capture`, {
                         method: "POST",
                         headers: {Authorization: `Bearer ${token}` },
                       })
@@ -254,10 +255,15 @@ export default function PodcastForm() {
                           console.log(details);
                           alert("Transaction completed by " + details.payer.name.given_name+ " "+ details.purchase_units[0].payments.captures[0].amount.value);
                           setCreditsPopup(false);
-                          const storedCredits = localStorage.getItem("credits");
-                          const addedCredits = Number(details.purchase_units[0].payments.captures[0].amount.value);
-                          const newCredits = (storedCredits ? Number(storedCredits) : 0) + addedCredits;
-                          localStorage.setItem("credits", newCredits.toString());
+                          let storedCredits: string | null = "0";
+                          if (typeof window !== "undefined") {
+                            storedCredits = localStorage.getItem("credits")
+                            const addedCredits = Number(details.purchase_units[0].payments.captures[0].amount.value);
+                            const newCredits = (storedCredits ? Number(storedCredits) : 0) + addedCredits;
+                            localStorage.setItem("credits", newCredits.toString());
+                          }
+                          
+                          
                           setCredits('');
                         });
                     }}

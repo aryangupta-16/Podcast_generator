@@ -8,7 +8,11 @@ const Navbar = ({creditsPopup,setCreditsPopup}: {creditsPopup: boolean, setCredi
     const [loggedin,setLoggedin] = useState(false);
     const token = Cookies.get("token");
 
-    const storedCredits = localStorage.getItem("credits")
+    let storedCredits: string | null = "0";
+    if (typeof window !== "undefined") {
+      storedCredits = localStorage.getItem("credits")
+    }
+    
     useEffect(() => {
 
         if (!token) {

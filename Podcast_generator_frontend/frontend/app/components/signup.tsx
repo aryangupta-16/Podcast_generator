@@ -19,7 +19,7 @@ const Signup = () => {
     setSuccess("");
     setLoading(true);
     try {
-      await axios.post("http://localhost:8000/auth/signup", {
+      await axios.post("https://podcast-generator-qzhs.onrender.com/auth/signup", {
         name,
         email,
         password,

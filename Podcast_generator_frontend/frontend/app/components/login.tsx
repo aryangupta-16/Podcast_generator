@@ -17,12 +17,14 @@ const Login = () => {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:8000/auth/login", {
+      const res = await axios.post("https://podcast-generator-qzhs.onrender.com/auth/login", {
         email,
         password,
       });
       Cookies.set("token", res.data?.access_token, { expires: 7000 });
-      localStorage.setItem("credits", res.data?.credits);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("credits", res.data?.credits);
+      }
       router.push("/podcastFormPage");
     } catch (err: any) {
       setError(
