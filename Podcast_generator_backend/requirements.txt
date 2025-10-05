@@ -167,3 +167,10 @@ xxhash==3.5.0
     # via langgraph
 zstandard==0.23.0
     # via langsmith
+
+# Database
+mongoengine==0.28.2
+
+# Authentication & Security
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
