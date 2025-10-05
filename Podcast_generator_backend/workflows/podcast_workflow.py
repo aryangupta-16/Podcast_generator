@@ -15,7 +15,7 @@ from models.request_models import PodcastRequest, PodcastResponse, MemoryEntry, 
 
 class WorkflowState(TypedDict,total=False):
     """State for the podcast generation workflow."""
-    request: Annotated[PodcastRequest, "request"]
+    request: PodcastRequest
     script: str
     audio_data: bytes
     audio_file_path: str
