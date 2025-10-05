@@ -1,99 +1,329 @@
 """
-Basic test to verify the setup works correctly.
+LangGraph workflow for podcast generation with memory and tool calling.
 """
 
-import asyncio
-import os
-from models.request_models import PodcastRequest, Tone, Voice
+import time
+from typing import Dict, Any, TypedDict, Annotated
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import ToolNode
+from agents.script_agent import ScriptAgent
+from agents.tts_agent import TTSAgent
 from memory.memory_store import memory_store
 from utils.audio_utils import audio_utils
+from models.request_models import PodcastRequest, PodcastResponse, MemoryEntry, Tone, Voice
 
 
-def test_imports():
-    """Test that all modules can be imported correctly."""
-    print("✅ All modules imported successfully")
-    
-    # Test models
-    request = PodcastRequest(
-        topic="Test topic",
-        tone=Tone.CONVERSATIONAL,
-        voice=Voice.FABLE
-    )
-    print(f"✅ Models working: {request.topic}")
-    
-    # Test memory store
-    print(f"✅ Memory store working: {memory_store.size()} entries")
-    
-    # Test audio utils
-    print(f"✅ Audio utils working: {audio_utils.output_dir}")
-    
-    return True
+class WorkflowState(TypedDict,total=False):
+    """State for the podcast generation workflow."""
+    request: PodcastRequest
+    script: str
+    audio_data: bytes
+    audio_file_path: str
+    duration_seconds: float
+    # success: bool
+    error_message: str
+    user_preferences: Dict[str, Any]
+    timestamp: float
 
 
-def test_environment():
-    """Test environment configuration."""
-    print("\n🔧 Environment Check:")
+class PodcastWorkflow:
+    """LangGraph workflow for podcast generation."""
     
-    # Check OpenAI API key
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key and openai_key != "your_openai_api_key_here":
-        print("✅ OpenAI API key configured")
-    else:
-        print("⚠️  OpenAI API key not configured (set OPENAI_API_KEY in .env)")
+    def __init__(self):
+        """Initialize the workflow."""
+        self.script_agent = ScriptAgent()
+        self.tts_agent = TTSAgent()
+        self.graph = self._build_graph()
     
-    # Check debug mode
-    debug = os.getenv("DEBUG", "False").lower() == "true"
-    print(f"✅ Debug mode: {debug}")
-    
-    return True
-
-
-async def test_workflow_components():
-    """Test workflow components (without making API calls)."""
-    print("\n🔄 Workflow Components Check:")
-    
-    try:
-        from workflows.podcast_workflow import podcast_workflow
-        print("✅ LangGraph workflow initialized")
+    def _build_graph(self) -> StateGraph:
+        """Build the LangGraph workflow."""
         
-        from agents.script_agent import ScriptAgent
-        from agents.tts_agent import TTSAgent
+        # Create the state graph
+        workflow = StateGraph(WorkflowState)
         
-        script_agent = ScriptAgent()
-        tts_agent = TTSAgent()
+        # Add nodes
+        workflow.add_node("get_user_preferences", self._get_user_preferences)
+        workflow.add_node("generate_script", self._generate_script)
+        workflow.add_node("generate_audio", self._generate_audio)
+        workflow.add_node("save_audio", self._save_audio)
+        workflow.add_node("update_memory", self._update_memory)
+        workflow.add_node("handle_error", self._handle_error)
         
-        print("✅ Agents initialized")
+        # Define the workflow
+        workflow.set_entry_point("get_user_preferences")
         
-        # Test voice characteristics
-        characteristics = tts_agent.get_voice_characteristics(Voice.FABLE)
-        print(f"✅ Voice characteristics: {characteristics['personality']}")
+        # Add edges
+        workflow.add_edge("get_user_preferences", "generate_script")
+        workflow.add_edge("generate_script", "generate_audio")
+        workflow.add_edge("generate_audio", "save_audio")
+        workflow.add_edge("save_audio", "update_memory")
+        workflow.add_edge("update_memory", END)
         
-        return True
+        # Add conditional edges for error handling
+        workflow.add_conditional_edges(
+            "generate_script",
+            self._should_continue,
+            {
+                "continue": "generate_audio",
+                "error": "handle_error"
+            }
+        )
         
-    except Exception as e:
-        print(f"❌ Workflow test failed: {e}")
-        return False
+        workflow.add_conditional_edges(
+            "generate_audio",
+            self._should_continue,
+            {
+                "continue": "save_audio",
+                "error": "handle_error"
+            }
+        )
+        
+        workflow.add_conditional_edges(
+            "save_audio",
+            self._should_continue,
+            {
+                "continue": "update_memory",
+                "error": "handle_error"
+            }
+        )
+        
+        workflow.add_edge("handle_error", END)
+        
+        return workflow.compile()
+    
+    def _get_user_preferences(self, state: WorkflowState) -> WorkflowState:
+        """Get user preferences from memory."""
+        # try:
+        user_preferences = memory_store.get_user_preferences()
+        state["user_preferences"] = user_preferences
+        state["timestamp"] = time.time()
+            # state["success"] = True
+        state["error_message"] = ""
+        print("Returning state keys from generate_script: user preference", state.keys())
+
+        return {
+            "user_preferences": user_preferences,
+            "timestamp": time.time()
+        }
+        # except Exception as e:
+        #     # state["success"] = False
+        #     state["error_message"] = f"Failed to get user preferences: {str(e)}"
+        #     return {"error_message": f"Failed to get user preferences: {str(e)}"}
+
+    
+    def _generate_script(self, state: WorkflowState) -> WorkflowState:
+        """Generate the podcast script."""
+        # try:
+        request = state["request"]
+        user_preferences = state.get("user_preferences", {})
+            
+        import asyncio
+        script = None
+            # try:
+        script = asyncio.run(self.script_agent.generate_script(
+                topic=request.topic,
+                tone=request.tone,
+                duration_minutes=request.duration_minutes,
+                user_preferences=user_preferences
+            ))
+        print(script)
+            # except Exception as e:
+            #     # state["success"] = False
+            #     state["error_message"] = f"Failed to generate script: {str(e)}"
+            #     return {"error_message": f"Failed to generate script: {str(e)}"}
+
+        state["script"] = script
+            # state["success"] = True
+        state["error_message"] = ""
+        print("Returning state keys from generate_script: generate script", state.keys())
+
+        return {"script": script}
+
+            
+        # except Exception as e:
+        #     # state["success"] = False
+        #     state["error_message"] = f"Failed to generate script: {str(e)}"
+        #     return {"error_message": f"Failed to generate script: {str(e)}"}
+
+    
+    def _generate_audio(self, state: WorkflowState) -> WorkflowState:
+            """Generate audio from the script."""
+        # try:
+            print("Returning state keys from generate_script: generate audio", state.keys())
+            request = state["request"]
+            script = state["script"]
+            
+            import asyncio
+            audio_data = None
+            # try:
+            audio_data = asyncio.run(self.tts_agent.generate_audio(
+                    script=script,
+                    voice=request.voice,
+                    output_format="mp3"
+                ))
+            # except Exception as e:
+            #     # state["success"] = False
+            #     state["error_message"] = f"Failed to generate audio: {str(e)}"
+            #     print("Returning state keys from generate_audio error: ", state.keys())
+            #     return {"error_message": f"Failed to generate audio: {str(e)}"}
+
+            state["audio_data"] = audio_data
+            # state["success"] = True
+            state["error_message"] = ""
+            print("Returning state keys from generate_script:", state.keys())
+
+            return {"audio_data": audio_data}
+
+            
+        # except Exception as e:
+        #     # state["success"] = False
+        #     state["error_message"] = f"Failed to generate audio: {str(e)}"
+        #     return {"error_message": f"Failed to generate audio: {str(e)}"}
+
+    
+    def _save_audio(self, state: WorkflowState) -> WorkflowState:
+            """Save the audio file."""
+        # try:
+            request = state["request"]
+            audio_data = state["audio_data"]
+            timestamp = state["timestamp"]
+            
+            # Generate filename
+            filename = audio_utils.generate_filename(
+                topic=request.topic,
+                voice=request.voice.value,
+                timestamp=timestamp
+            )
+            file_path = audio_utils.get_file_path(filename)
+            # print(file_path)
+            file_path.parent.mkdir(exist_ok=True)
+            # Write the actual audio data to the file
+            with open(file_path, "wb") as f:
+                f.write(audio_data)
+            # Calculate duration
+            duration_seconds = self.tts_agent.estimate_audio_duration(state["script"])
+
+            state["audio_file_path"] = str(filename)
+            state["duration_seconds"] = duration_seconds
+            # state["success"] = True
+            state["error_message"] = ""
+            print("Returning state keys from generate_script:", state.keys())
+
+            return {
+            "audio_file_path": str(filename),
+            "duration_seconds": duration_seconds
+        }
+
+            
+        # except Exception as e:
+        #     # state["success"] = False
+        #     state["error_message"] = f"Failed to save audio: {str(e)}"
+        #     return {"error_message": f"Failed to save audio: {str(e)}"}
+
+    
+    def _update_memory(self, state: WorkflowState) -> WorkflowState:
+            """Update memory with the generation result."""
+        # try:
+            request = state["request"]
+            timestamp = state["timestamp"]
+            duration_seconds = state["duration_seconds"]
+            # success = state["success"]
+            
+            # Create memory entry
+            memory_entry = MemoryEntry(
+                topic=request.topic,
+                tone=request.tone,
+                voice=request.voice,
+                timestamp=timestamp,
+                duration_seconds=duration_seconds,
+                success=True
+            )
+            
+            # Add to memory
+            memory_store.add_entry(memory_entry)
+            print("Returning state keys from generate_script:", state.keys())
+
+            return None
+            
+        # except Exception as e:
+        #     # Don't fail the workflow for memory errors
+        #     state["error_message"] = f"Warning: Failed to update memory: {str(e)}"
+        #     return {"error_message": f"Warning: Failed to update memory: {str(e)}"}
+    
+    def _handle_error(self, state: WorkflowState) -> WorkflowState:
+        """Handle errors in the workflow."""
+        # Update memory with failed attempt
+        try:
+            request = state["request"]
+            timestamp = state["timestamp"]
+            
+            memory_entry = MemoryEntry(
+                topic=request.topic,
+                tone=request.tone,
+                voice=request.voice,
+                timestamp=timestamp,
+                duration_seconds=0.0,
+                success=False
+            )
+            
+            memory_store.add_entry(memory_entry)
+        except:
+            pass  # Ignore memory errors in error handling
+        print("Returning state keys from generate_script:", state.keys())
+
+        return {"error_message": state.get("error_message", "Unknown error")}
+    
+    def _should_continue(self, state: WorkflowState) -> str:
+        """Determine if the workflow should continue or handle error."""
+        return "error" if state.get("error_message") else "continue"
+    
+    async def generate_podcast(self, request: PodcastRequest) -> PodcastResponse:
+        """
+        Generate a podcast using the workflow.
+        
+        Args:
+            request: The podcast generation request
+            
+        Returns:
+            Podcast generation response
+        """
+        try:
+            # Initialize state
+            initial_state = WorkflowState(
+                request=request,
+                script="",
+                audio_data=b"",
+                audio_file_path="",
+                duration_seconds=0.0,
+                # success=False,
+                error_message="",
+                user_preferences={},
+                timestamp=time.time()
+            )
+            
+            # Run the workflow
+            final_state = await self.graph.ainvoke(initial_state)
+            
+            # Create response
+            response = PodcastResponse(
+                success=True,
+                audio_file_path=final_state.get("audio_file_path"),
+                duration_seconds=final_state.get("duration_seconds"),
+                error_message=final_state.get("error_message"),
+                topic=request.topic,
+                voice_used=request.voice.value
+            )
+            
+            return response
+            
+        except Exception as e:
+            return PodcastResponse(
+                success=False,
+                error_message=f"Workflow execution failed: {str(e)}",
+                topic=request.topic,
+                voice_used=request.voice.value
+            )
 
 
-def main():
-    """Run all tests."""
-    print("🧪 Running AI Podcast Generator Tests\n")
-    
-    # Test imports
-    test_imports()
-    
-    # Test environment
-    test_environment()
-    
-    # Test workflow components
-    asyncio.run(test_workflow_components())
-    
-    print("\n🎉 All tests completed!")
-    print("\n📚 Next steps:")
-    print("1. Set your OpenAI API key in .env file")
-    print("2. Run: uv run python main.py")
-    print("3. Visit: http://localhost:8000/docs")
-
-
-if __name__ == "__main__":
-    main() 
+# Global workflow instance
+podcast_workflow = PodcastWorkflow() 

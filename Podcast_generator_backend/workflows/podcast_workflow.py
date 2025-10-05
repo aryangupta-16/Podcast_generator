@@ -4,7 +4,7 @@ LangGraph workflow for podcast generation with memory and tool calling.
 
 import time
 from typing import Dict, Any, TypedDict, Annotated
-from langgraph.graph import StateGraph, END, InjectedState
+from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from agents.script_agent import ScriptAgent
 from agents.tts_agent import TTSAgent
@@ -15,7 +15,7 @@ from models.request_models import PodcastRequest, PodcastResponse, MemoryEntry, 
 
 class WorkflowState(TypedDict,total=False):
     """State for the podcast generation workflow."""
-    request: Annotated[PodcastRequest, InjectedState("request")]
+    request: Annotated[PodcastRequest, "request"]
     script: str
     audio_data: bytes
     audio_file_path: str
