@@ -168,8 +168,8 @@ xxhash==3.5.0
 zstandard==0.23.0
     # via langsmith
 
-# Database
-mongoengine==0.28.2
+# Database ODM
+mongoengine==0.29.1
 
 # Authentication & Security
 passlib[bcrypt]==1.7.4
