@@ -15,6 +15,11 @@ from utils.audio_utils import audio_utils
 from memory.memory_store import memory_store
 from db import init_db
 from api import auth
+import sys
+
+print(">>> Running on Python:", sys.version)
+
+
 # Load environment variables
 load_dotenv()
 
